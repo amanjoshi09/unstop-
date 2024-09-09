@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Seat Reservation</title>
+    <script src="index.js"></script>
+    <style>
+        .row {
+            margin-bottom: 10px;
+        }
+        .seat {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background-color: green;
+            margin: 2px;
+            text-align: center;
+            line-height: 30px;
+            cursor: pointer;
+        }
+        .seat.booked {
+            background-color: red;
+            cursor: not-allowed;
+        }
+        .seat.selected {
+            background-color: yellow;
+        }
+    </style>
+</head>
+<body>
+    <h1>Train Seat Reservation</h1>
+    <label for="numSeats">Enter the number of seats to reserve:</label>
+    <input type="number" id="numSeats" min="1" max="7" value="1">
+    <button onclick="reserveSeats()">Reserve Seats</button>
+
+    <h2>Seat Layout</h2>
+    <div id="seats"></div>
+
+    <h3>Booked Seats</h3>
+    <div id="bookedSeats"></div>
+
+    <script>
+        const rows = 12;
+        const seatsPerRow = [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 3]; // 7 seats per row except the last row with 3 seats
+        let seatMap = Array(12).fill().map((_, row) => Array(seatsPerRow[row]).fill(0)); // 0: available, 1: booked
+        let selectedSeats = [];
+
+        // Create seats dynamically
+        function renderSeats() {
+            const seatContainer = document.getElementById("seats");
+            seatContainer.innerHTML = "";
+            for (let row = 0; row < rows; row++) {
+                const rowDiv = document.createElement("div");
+                rowDiv.classList.add("row");
+                for (let seat = 0; seat < seatsPerRow[row]; seat++) {
+                    const seatDiv = document.createElement("div");
+                    seatDiv.classList.add("seat");
+                    seatDiv.setAttribute("data-seat", `${row}-${seat}`);
+                    seatDiv.textContent = `${row + 1}-${seat + 1}`;
+
+                    if (seatMap[row][seat] === 1) {
+                        seatDiv.classList.add("booked");
+                    }
+
+                    rowDiv.appendChild(seatDiv);
+                }
+                seatContainer.appendChild(rowDiv);
+            }
+        }
+
+        // Function to update the seat map
+        function updateSeatMap(reservedSeats) {
+            reservedSeats.forEach(seat => {
+                const [row, seatIndex] = seat;
+                seatMap[row][seatIndex] = 1;
+            });
+        }
+
+        // Function to reserve seats
+        function reserveSeats() {
+            const numSeats = parseInt(document.getElementById("numSeats").value);
+            if (numSeats < 1 || numSeats > 7) {
+                alert("You can only reserve between 1 and 7 seats.");
+                return;
+            }
+
+            fetch('/reserve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ numSeats })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the seat map with reserved seats
+                    updateSeatMap(data.reservedSeats);
+                    renderSeats();
+
+                    // Display booked seat numbers
+                    const bookedSeatsDiv = document.getElementById("bookedSeats");
+                    bookedSeatsDiv.innerHTML = `Seats booked: ${data.reservedSeats.map(seat => `Row ${seat[0] + 1}, Seat ${seat[1] + 1}`).join(", ")}`;
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
+
+        window.onload = renderSeats;
+    </script>
+</body>
+</html>
